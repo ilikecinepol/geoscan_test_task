@@ -45,8 +45,6 @@ def moving(obj, speed):
     obj.left(angular_speed)
 
 
-
-
 # Функция управления
 def control(current_obj, target_obj):
     goal_x = target_obj[0]
@@ -57,7 +55,7 @@ def control(current_obj, target_obj):
     k_angular = 1.0  # Пропорциональный коэффициент
     k_linear = 0.5
     desired_angle_goal = math.degrees(math.atan2(goal_y - y, goal_x - x))
-    # Угловая скорость пропорциональная арктангенсу между векторами, проведёнными из текущего положения,
+    # Угловая скорость пропорциональна арктангенсу между векторами, проведёнными из текущего положения,
     # один из них сонаправлен с yaw, другой направлен на целевую точку
     angular_speed = (desired_angle_goal - current_yaw) * k_angular
     # Линейная скорость пропорциональна длине вектора, вершины которого находятся в текущей и целевой позиях
@@ -69,7 +67,7 @@ def control(current_obj, target_obj):
 
 if __name__ == '__main__':
     # Установка целевых координат, максимум (450, 400)
-    target_obj = set_goal(-150, -150)
+    target_obj = set_goal(350, 400)
     obj = turtle.Turtle('circle', visible=True)
     obj.shape('classic')
     while True:
