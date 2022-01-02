@@ -1,16 +1,16 @@
 from tkinter import *
 from PIL import ImageTk, Image
 import time
-from server import *
+import socket
 from tkinter.ttk import Combobox
-from server import *
+from tkinter import filedialog as fd
 
 
-class GUI:
+class Client:
     '''Класс графического интерфейса Сервера'''
 
     def __init__(self, window):
-        title = "Сервер для вывода изображений"
+        title = "Клиент для отправки изображений"
         # Разбиение окна на сетку 3х3
         window.configure(background='#f3f3f3')
         window.columnconfigure(0, weight=1)
@@ -56,17 +56,30 @@ class GUI:
             port = combo1.get()
             lbl = Label(window, text=title, font=("Arial Bold", 24), fg="#ff3300", bg="#f3f3f3")
             lbl.grid(row=0, column=0, columnspan=2)
-            stat = Label(window, text=f"IP:{ip} PORT:{port}", font=("Arial Bold", 24), fg="#555555", bg="#f3f3f3")
+            stat = Label(window, text=f"IP:{ip}      PORT:{port}", font=("Arial Bold", 24), fg="#555555", bg="#f3f3f3")
             stat.grid(row=2, column=0, columnspan=2)
 
         output_data()
+        file_name = StringVar()
+        file_name.set("Выберите файл")
+        self.file_name = file_name
+        combo_file = Entry(data, width=36, textvariable=file_name)
+
+        combo_file.grid(column=0, row=3, sticky='w')
+
+        browse = Button(data, text="Выбрать файл", height=1, width=30, command=self.browse_file)
+        browse.grid(column=0, row=4)
 
         btn3 = Button(data, text="Применить", height=1, width=30, command=output_data)
-        btn3.grid(column=0, row=3)
-        btn4 = Button(data, text="Запуск сервера", height=1, width=30, command=self.starting_server)
-        btn4.grid(column=0, row=4)
+        btn3.grid(column=0, row=5)
+        btn4 = Button(data, text="Подключение к серверу", height=1, width=30, command=self.connect_to_server)
+        btn4.grid(column=0, row=6)
+
+        transmit_button = Button(data, text="Отправить на сервер", height=1, width=30, command=self.send_picture)
+        transmit_button.grid(column=0, row=8)
 
         self.data = data
+        self.path = ''
 
     def get_port(self):
         port = self.combo1.get()
@@ -76,13 +89,20 @@ class GUI:
         ip = self.combo.get()
         return ip
 
+    def browse_file(self):
+        name = fd.askopenfilename()
+        self.file_name.set(name)
+        self.past_picture(name)
+        self.path = name
+
+
     def connection_status(self, status):
         color = 'green' if status else 'red'
 
         # Овальная форма.
         size = 200
         canvas = Canvas(self.data, height=size, width=size)
-        canvas.grid(column=0, row=5, sticky='nw')
+        canvas.grid(column=0, row=7, sticky='nw')
         canvas.create_oval(
             10, 10, size, size, outline="#f11",
             fill=color, width=2
@@ -90,23 +110,28 @@ class GUI:
 
         return color
 
-    def starting_server(self):
-        # Логика сервера
-
-        # print(self.ip, self.port)
+    def connect_to_server(self):
+        # Логика клиента
+        self.client = socket.socket(
+            socket.AF_INET,
+            socket.SOCK_STREAM,
+        )
+        self.ip = self.get_ip()
+        self.port = self.get_port()
+        print(self.ip, self.port)
         try:
-            self.ip = self.get_ip()
-            self.port = int(self.get_port())
-            self.serv = Server(self.ip, self.port)
-            status = True
+            self.client.connect(
+                (self.ip, int(self.port))
+            )
+            data = self.client.recv(2048)
+            print(data.decode('utf-8'))
+            status = True if data.decode('utf-8') == 'Connected' else False
+            print('staus', status)
+
         except ValueError:
-            # print(ValueError)
             status = False
-        except OSError:
-            pass
+            print('Ошибка')
         self.connection_status(status)
-        print(status)
-        return status
 
     def past_picture(self, path):
         # create a canvas to show image on
@@ -119,27 +144,40 @@ class GUI:
         canvas_for_image.image = ImageTk.PhotoImage(image.resize((350, 350), Image.ANTIALIAS))
         canvas_for_image.create_image(1, 1, image=canvas_for_image.image, anchor='nw')
 
-    def recieve_picture(self):
-        return (self.serv.recieve_picture())
+    def get_image_name(self, path):
+        num = 0
+        path = path[::-1]
+        for i in range(len(path)):
+            if path[i] == '/':
+                num = i
+                break
+        name = path[:num]
+        name = name[::-1]
+        return name
+
+    def send_picture(self):
+        name = self.get_image_name(self.path)
+        print(name)
+        self.client.send(f'name:{name}'.encode('utf-8'))
+        time.sleep(1)
+        file = open(self.path, 'rb')
+        data = file.read(2048)
+        while data:
+            self.client.send(data)
+            data = file.read(2048)
+        file.close()
+        self.client.close()
+        self.connection_status(False)
 
 
 if __name__ == '__main__':
     window = Tk()
     window.title("Server")
     window.geometry("600x600")
-    display = GUI(window)
-    path = 'server_data/load.png'
-    # path = 'server_data/pioner.jpg'
+    display = Client(window)
+    path = 'server_data/spinner.gif'
     display.past_picture(path)
-
-    window.configure(background='#f3f3f3')
-    display.starting_server()
-    # window.mainloop()
+    display.connection_status(False)
     while True:
-        try:
-            path = display.recieve_picture()
-            display.past_picture(path)
-        except AttributeError:
-            pass
         window.update()
         time.sleep(0.1)
