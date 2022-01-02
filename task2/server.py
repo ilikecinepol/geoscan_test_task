@@ -1,6 +1,7 @@
 import socket
 
 
+
 class Server:
     def __init__(self, ip, port):
         self.ip = ip
@@ -34,6 +35,7 @@ class Server:
             file.write(data)
             data = user_socket.recv(2048)
         file.close()
+        return path
 
 
 if __name__ == '__main__':

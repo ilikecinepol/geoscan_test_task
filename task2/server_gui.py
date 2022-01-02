@@ -92,58 +92,35 @@ class GUI:
 
     def starting_server(self):
         # Логика сервера
-        serv = socket.socket(
-            socket.AF_INET,
-            socket.SOCK_STREAM,
-        )
-        self.connection_status(False)
-        self.serv = serv
-        self.ip = self.get_ip()
-        self.port = self.get_port()
+
         # print(self.ip, self.port)
         try:
-            self.serv.bind(
-                (self.ip, int(self.port))
-            )
+            self.ip = self.get_ip()
+            self.port = int(self.get_port())
+            self.serv = Server(self.ip, self.port)
             status = True
-            serv.listen()
-            self.serv = serv
         except ValueError:
             # print(ValueError)
             status = False
-
-        # print('in funk', status)
+        except OSError:
+            pass
+        self.connection_status(status)
+        print(status)
         return status
-
 
     def past_picture(self, path):
         # create a canvas to show image on
-        canvas_for_image = Canvas(window, height=400, width=400, borderwidth=0, highlightthickness=0)
-        canvas_for_image.grid(row=1, column=1, padx=0, pady=0)
+        canvas_for_image = Canvas(window, height=350, width=350, borderwidth=0, highlightthickness=0)
+        canvas_for_image.grid(row=1, column=1, padx=25, pady=25)
 
         # create image from image location resize it to 200X200 and put in on canvas
         image = Image.open(path)
 
-        canvas_for_image.image = ImageTk.PhotoImage(image.resize((400, 400), Image.ANTIALIAS))
+        canvas_for_image.image = ImageTk.PhotoImage(image.resize((350, 350), Image.ANTIALIAS))
         canvas_for_image.create_image(1, 1, image=canvas_for_image.image, anchor='nw')
 
     def recieve_picture(self):
-        user_socket, address = self.serv.accept()
-        user_socket.send("Connected".encode('utf-8'))
-        print('Server starting')
-        user_socket = user_socket
-        data = user_socket.recv(2048)
-        print(data.decode('utf-8'))
-        if 'name:' in data.decode('utf-8'):
-            name = data.decode('utf-8')[5:]
-            print(name)
-        data = user_socket.recv(2048)
-        path = f'server_data/{name}'
-        file = open(path, 'wb')
-        while data:
-            file.write(data)
-            data = user_socket.recv(2048)
-        file.close()
+        return(self.serv.recieve_picture())
 
 
 if __name__ == '__main__':
@@ -152,13 +129,17 @@ if __name__ == '__main__':
     window.geometry("600x600")
     display = GUI(window)
     path = 'server_data/load.png'
+    # path = 'server_data/pioner.jpg'
     display.past_picture(path)
 
     window.configure(background='#f3f3f3')
+    display.starting_server()
+    # window.mainloop()
     while True:
-        # print('out funk', display.starting_server())
-        if display.starting_server():
-            print('starting recieve')
-            display.recieve_picture()
+        try:
+            path = display.recieve_picture()
+            display.past_picture(path)
+        except AttributeError:
+            pass
         window.update()
         time.sleep(0.1)
